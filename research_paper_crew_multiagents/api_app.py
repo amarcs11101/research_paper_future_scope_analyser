@@ -5,8 +5,8 @@ from datetime import date, datetime
 from typing import Optional
 from crewai import Crew
 from langchain_groq import ChatGroq
-from trip_agents import TripAgents
-from trip_tasks import TripTasks
+from agents.research_agents import ResearchPaperAgents
+from agents.research_tasks import ResearchTasks
 import os
 from dotenv import load_dotenv
 from functools import lru_cache
@@ -29,24 +29,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class TripRequest(BaseModel):
-    origin: str = Field(..., 
-        example="Bangalore, India",
-        description="Your current location")
-    destination: str = Field(..., 
-        example="Krabi, Thailand",
-        description="Destination city and country")
-    start_date: date = Field(..., 
-        example="2025-06-01",
-        description="Start date of your trip")
-    end_date: date = Field(..., 
-        example="2025-06-10",
-        description="End date of your trip")
-    interests: str = Field(..., 
-        example="2 adults who love swimming, dancing, hiking, shopping, local food, water sports adventures and rock climbing",
-        description="Your interests and trip details")
+class ResearchPaperRequest(BaseModel): 
+    research_on: str = Field(..., 
+       description="A specific research topic, technology, or area of innovation for which academic papers or patents should be analyzed",
+        examples=["Recent advancements in lithium-ion battery technology", 
+                  "AI applications in cancer diagnosis", 
+                  "Trends in quantum computing hardware", 
+                  "Sustainable packaging materials in e-commerce"]
+    )
 
-class TripResponse(BaseModel):
+class ResearchResponse(BaseModel):
     status: str
     message: str
     itinerary: Optional[str] = None
@@ -77,50 +69,41 @@ def validate_api_keys(settings: Settings = Depends(get_settings)):
         )
     return settings
 
-class TripCrew:
-    def __init__(self, origin, destination, date_range, interests):
-        self.destination = destination
-        self.origin = origin
-        self.interests = interests
-        self.date_range = date_range
+class ResearchCrew:
+    def __init__(self, topic):
+        self.topic = topic 
         self.llm = ChatGroq(model="gemini/gemini-2.0-flash")
 
     def run(self):
         try:
-            agents = TripAgents(llm=self.llm)
-            tasks = TripTasks()
+            agents = ResearchPaperAgents(llm=self.llm)
+            tasks = ResearchTasks()
 
-            city_selector_agent = agents.city_selection_agent()
-            local_expert_agent = agents.local_expert()
-            travel_concierge_agent = agents.travel_concierge()
+            patent_research_expert_agent = agents.patent_research_expert()
+            trend_analyst_agent = agents.trend_analyst()
+            future_scope_analyst_agent = agents.future_scope_analyst()
 
             identify_task = tasks.identify_task(
-                city_selector_agent,
-                self.origin,
-                self.destination,
-                self.interests,
-                self.date_range
+                patent_research_expert_agent,
+                self.topic
             )
 
             gather_task = tasks.gather_task(
-                local_expert_agent,
-                self.origin,
-                self.interests,
-                self.date_range
+                trend_analyst_agent, 
             )
 
             plan_task = tasks.plan_task(
-                travel_concierge_agent,
-                self.origin,
-                self.interests,
-                self.date_range
+                future_scope_analyst_agent,
+                topic=self.topic
             )
 
             crew = Crew(
                 agents=[
-                    city_selector_agent, local_expert_agent, travel_concierge_agent
+                    patent_research_expert_agent, trend_analyst_agent, future_scope_analyst_agent
                 ],
-                tasks=[identify_task, gather_task, plan_task],
+                tasks=[ tasks.identify_task(agents.patent_research_expert(), self.topic),
+                        tasks.gather_task(agents.trend_analyst()),
+                        tasks.plan_task(agents.future_scope_analyst(), self.topic)],
                 verbose=True
             )
 
@@ -136,51 +119,39 @@ class TripCrew:
 @app.get("/")
 async def root():
     return {
-        "message": "Welcome to VacAIgent API",
+        "message": "Welcome to future research API",
         "docs_url": "/docs",
         "redoc_url": "/redoc"
     }
 
-@app.post("/api/v1/plan-trip", response_model=TripResponse)
-async def plan_trip(
-    trip_request: TripRequest,
+@app.post("/api/v1/research", response_model=ResearchResponse)
+async def research_paper_future_scope_analyst(
+    research_request: ResearchPaperRequest,
     settings: Settings = Depends(validate_api_keys)
-):
-    # Validate dates
-    if trip_request.end_date <= trip_request.start_date:
-        raise HTTPException(
-            status_code=400,
-            detail="End date must be after start date"
-        )
-
-    # Format date range
-    date_range = f"{trip_request.start_date} to {trip_request.end_date}"
+): 
 
     try:
-        trip_crew = TripCrew(
-            trip_request.origin,
-            trip_request.destination,
-            date_range,
-            trip_request.interests
+        research_crew = ResearchCrew(
+            research_request.research_on
         )
         
-        itinerary = trip_crew.run()
+        itinerary = research_crew.run()
         
         # Ensure itinerary is a string
         if not isinstance(itinerary, str):
             itinerary = str(itinerary)
             
-        return TripResponse(
+        return ResearchResponse(
             status="success",
-            message="Trip plan generated successfully",
+            message="Future scope based on research generated successfully",
             itinerary=itinerary
         )
     
     except Exception as e:
         print(e)
-        return TripResponse(
+        return ResearchResponse(
             status="error",
-            message="Failed to generate trip plan",
+            message="Failed to generate future scope report",
             error=str(e)
         )
 

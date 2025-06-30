@@ -2,11 +2,10 @@ import json
 import requests
 import streamlit as st
 from crewai.tools import BaseTool
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel, Field 
 class SearchQuery(BaseModel):
-    query: str = Field(..., description="The search query to look up")
-
+    query: str = Field(..., description="The search query to look up") 
+    
 class SearchTools(BaseTool):
     name: str = "Search the internet"
     description: str = "Useful to search the internet about a given topic and return relevant results"
@@ -31,6 +30,9 @@ class SearchTools(BaseTool):
                 return "No results found or API error occurred."
             
             results = data['organic']
+            print("###################################### search tools ######################################")
+            print(f"Search results for query: {results}")
+            print("########################################### END ###########################################")
             string = []
             for result in results[:top_result_to_return]:
                 try:

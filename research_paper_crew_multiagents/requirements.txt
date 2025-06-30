@@ -16,6 +16,6 @@ langchain-openai>=0.0.5
 
 
 crewai>=0.28.8
-crewai-tools==0.1.6
+crewai-tools==0.48.0
 langchain>=0.1.20
 apache-airflow
