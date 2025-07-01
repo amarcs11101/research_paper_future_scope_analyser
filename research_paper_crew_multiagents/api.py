@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Optional
 from crewai import Crew
 from langchain_groq import ChatGroq
+from langchain.chat_models import ChatOpenAI
 from agents.research_agents import ResearchPaperAgents
 from agents.research_tasks import ResearchTasks
 import os
@@ -15,8 +16,8 @@ from functools import lru_cache
 load_dotenv()
 
 app = FastAPI(
-    title="VacAIgent API",
-    description="AI-powered travel planning API using CrewAI",
+    title="Research Paper Future Predictor API",
+    description="AI-powered Predict future innovation/technology API using CrewAI",
     version="1.0.0"
 )
 
@@ -72,7 +73,7 @@ def validate_api_keys(settings: Settings = Depends(get_settings)):
 class ResearchCrew:
     def __init__(self, topic):
         self.topic = topic 
-        self.llm = ChatGroq(model="gemini/gemini-2.0-flash")
+        self.llm = ChatOpenAI(model=os.getenv("RESEARCH_MODEL_NAME"))
 
     def run(self):
         try:
@@ -81,21 +82,7 @@ class ResearchCrew:
 
             patent_research_expert_agent = agents.patent_research_expert()
             trend_analyst_agent = agents.trend_analyst()
-            future_scope_analyst_agent = agents.future_scope_analyst()
-
-            identify_task = tasks.identify_task(
-                patent_research_expert_agent,
-                self.topic
-            )
-
-            gather_task = tasks.gather_task(
-                trend_analyst_agent, 
-            )
-
-            plan_task = tasks.plan_task(
-                future_scope_analyst_agent,
-                topic=self.topic
-            )
+            future_scope_analyst_agent = agents.future_scope_analyst() 
 
             crew = Crew(
                 agents=[
