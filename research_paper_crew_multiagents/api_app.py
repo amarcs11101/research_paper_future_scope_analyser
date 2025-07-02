@@ -15,8 +15,8 @@ from functools import lru_cache
 load_dotenv()
 
 app = FastAPI(
-    title="VacAIgent API",
-    description="AI-powered travel planning API using CrewAI",
+    title="Future Scope API",
+    description="AI-powered future scope API using CrewAI",
     version="1.0.0"
 )
 

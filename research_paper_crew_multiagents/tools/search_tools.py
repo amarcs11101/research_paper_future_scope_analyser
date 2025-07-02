@@ -1,8 +1,12 @@
 import json
-import requests
-import streamlit as st
+import requests 
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 class SearchQuery(BaseModel):
     query: str = Field(..., description="The search query to look up") 
     
@@ -17,7 +21,7 @@ class SearchTools(BaseTool):
             url = "https://google.serper.dev/search"
             payload = json.dumps({"q": query})
             headers = {
-                'X-API-KEY': st.secrets['SERPER_API_KEY'],
+                'X-API-KEY': SERPER_API_KEY,
                 'content-type': 'application/json'
             }
             response = requests.request("POST", url, headers=headers, data=payload)
