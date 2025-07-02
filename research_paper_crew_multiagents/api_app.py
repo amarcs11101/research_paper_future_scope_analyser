@@ -101,14 +101,13 @@ class ResearchCrew:
                 agents=[
                     patent_research_expert_agent, trend_analyst_agent, future_scope_analyst_agent
                 ],
-                tasks=[ tasks.identify_task(agents.patent_research_expert(), self.topic),
-                        tasks.gather_task(agents.trend_analyst()),
-                        tasks.plan_task(agents.future_scope_analyst(), self.topic)],
+                tasks=[ identify_task,
+                        gather_task,
+                       plan_task],
                 verbose=True
             )
 
-            result = crew.kickoff()
-            # Convert CrewOutput to string and ensure it's properly formatted
+            result = crew.kickoff() 
             return result.raw if hasattr(result, 'raw') else str(result)
         except Exception as e:
             raise HTTPException(
