@@ -8,9 +8,11 @@ from langchain_groq import ChatGroq
 from agents.research_agents import ResearchPaperAgents
 from agents.research_tasks import ResearchTasks
 import os
-from dotenv import load_dotenv
-from functools import lru_cache
-
+from dotenv import load_dotenv 
+from faiss_db_search.similarity_search import search_vector_db,save
+from langchain_openai import ChatOpenAI 
+from euriai import EuriaiClient
+from langchain_google_genai import ChatGoogleGenerativeAI
 # Load environment variables
 load_dotenv()
 
@@ -41,56 +43,35 @@ class ResearchPaperRequest(BaseModel):
 class ResearchResponse(BaseModel):
     status: str
     message: str
-    itinerary: Optional[str] = None
+    data: Optional[str] = None
     error: Optional[str] = None
 
 class Settings:
     def __init__(self):
         self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
         self.SERPER_API_KEY = os.getenv("SERPER_API_KEY")
-        self.BROWSERLESS_API_KEY = os.getenv("BROWSERLESS_API_KEY")
-
-@lru_cache()
-def get_settings():
-    return Settings()
-
-def validate_api_keys(settings: Settings = Depends(get_settings)):
-    required_keys = {
-        'GEMINI_API_KEY': settings.GEMINI_API_KEY,
-        'SERPER_API_KEY': settings.SERPER_API_KEY,
-        'BROWSERLESS_API_KEY': settings.BROWSERLESS_API_KEY
-    }
-    
-    missing_keys = [key for key, value in required_keys.items() if not value]
-    if missing_keys:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Missing required API keys: {', '.join(missing_keys)}"
-        )
-    return settings
+        self.BROWSERLESS_API_KEY = os.getenv("BROWSERLESS_API_KEY"),
+        self.GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+ 
 
 class ResearchCrew:
     def __init__(self, topic):
         self.topic = topic 
-        self.llm = ChatGroq(model="gemini/gemini-2.0-flash")
-
+        #self.llm = ChatGroq(model=os.getenv("CHAT_GROQ_MODEL_NAME"),groq_api_key=os.getenv("GROQ_API_KEY"))
+        #self.llm = ChatGoogleGenerativeAI(model= os.getenv("GEMINI_MODEL_NAME"), google_api_key= os.getenv("GEMINI_API_KEY"))
+        self.llm = ChatOpenAI(model= os.getenv("OPEN_AI_MODEL"), openai_api_key=os.getenv("OPENAI_API_KEY"))
     def run(self):
         try:
             agents = ResearchPaperAgents(llm=self.llm)
             tasks = ResearchTasks()
 
-            patent_research_expert_agent = agents.patent_research_expert()
-            trend_analyst_agent = agents.trend_analyst()
+            patent_research_expert_agent = agents.patent_research_expert() 
             future_scope_analyst_agent = agents.future_scope_analyst()
 
             identify_task = tasks.identify_task(
                 patent_research_expert_agent,
                 self.topic
-            )
-
-            gather_task = tasks.gather_task(
-                trend_analyst_agent, 
-            )
+            ) 
 
             plan_task = tasks.plan_task(
                 future_scope_analyst_agent,
@@ -99,10 +80,9 @@ class ResearchCrew:
 
             crew = Crew(
                 agents=[
-                    patent_research_expert_agent, trend_analyst_agent, future_scope_analyst_agent
+                    patent_research_expert_agent, future_scope_analyst_agent
                 ],
-                tasks=[ identify_task,
-                        gather_task,
+                tasks=[ identify_task, 
                        plan_task],
                 verbose=True
             )
@@ -125,34 +105,46 @@ async def root():
 
 @app.post("/api/v1/research", response_model=ResearchResponse)
 async def research_paper_future_scope_analyst(
-    research_request: ResearchPaperRequest,
-    settings: Settings = Depends(validate_api_keys)
-): 
-
-    try:
-        research_crew = ResearchCrew(
-            research_request.research_on
-        )
-        
-        itinerary = research_crew.run()
-        
-        # Ensure itinerary is a string
-        if not isinstance(itinerary, str):
-            itinerary = str(itinerary)
+    research_request: ResearchPaperRequest
+):      
+       print("### Searching in the vector db first ###")
+       vector_result=search_vector_db(research_request.research_on)
+       print(f"### Searching completed in the vector db & data is ### {vector_result}")
+       all_contents = [doc.page_content for doc in vector_result if hasattr(doc, "page_content")]
+       if vector_result and len(vector_result)>0: 
+            return ResearchResponse(
+                    status="success",
+                    message="Future scope based on research generated successfully from cache.",
+                    data="\n\n".join(all_contents) 
+                )
+       else:
+            print("## Calling the agents and tools for getting the research result as vector db doesn't contain the data ###")
+            try:
+                research_crew = ResearchCrew(
+                    research_request.research_on
+                )
+                
+                research_result = research_crew.run()
+                
+                # Ensure itinerary is a string
+                if not isinstance(research_result, str):
+                    research_result = str(research_result)
+                # Saving the new record in vector db 
+                save(query=research_request.research_on,result=research_result)
+                # End     
+                return ResearchResponse(
+                    status="success",
+                    message="Future scope based on research generated successfully",
+                    data=research_result
+                )
             
-        return ResearchResponse(
-            status="success",
-            message="Future scope based on research generated successfully",
-            itinerary=itinerary
-        )
-    
-    except Exception as e:
-        print(e)
-        return ResearchResponse(
-            status="error",
-            message="Failed to generate future scope report",
-            error=str(e)
-        )
+            except Exception as e:
+                print(e)
+                return ResearchResponse(
+                    status="error",
+                    message="Failed to generate future scope report",
+                    error=str(e)
+                )
 
 @app.get("/api/v1/health")
 async def health_check():

@@ -6,8 +6,8 @@ class FutureScopeInput(BaseModel):
     trend_summary: str = Field(..., description="Text summary of innovation trends from patent analysis")
 
 class FutureScopeTool(BaseTool):
-    name: str = "Future Scope Generator" 
-    description:str = "Generates strategic insights and future business opportunities based on technology trends"
+    name: str = "Patent Trend Analyzer & Future Scope Generator" 
+    description:str = "Analyzes a list of patents and detects innovation trends, tech shifts, and dominant themes . Generates strategic insights and future business opportunities based on technology trends"
     args_schema: type[BaseModel] = FutureScopeInput 
 
     def _run(self, trend_summary: str) -> str:
