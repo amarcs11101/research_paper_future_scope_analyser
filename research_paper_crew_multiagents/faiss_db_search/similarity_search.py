@@ -30,7 +30,7 @@ def search_vector_db(query: str):
     try:
         db = FAISS.load_local(VECTOR_DB_DIR, embeddings, allow_dangerous_deserialization=True)
         print("Vector DB loaded.")
-        results = db.similarity_search(query, k=3)
+        results = db.similarity_search_with_score(query, k=5)
         return results
     except Exception as e:
         print(f"[!] Failed to load or search vector DB: {e}")
@@ -45,7 +45,7 @@ def save(query: str, result: str):
 
     # Chunk the data
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = text_splitter.create_documents([combined])
+    chunks = text_splitter.create_documents([combined], metadatas=[{"query": query}])
     print("### Chunked the data ###")
 
     try:
@@ -56,7 +56,7 @@ def save(query: str, result: str):
         else:
             raise FileNotFoundError("Vector DB not found. Creating new one.")
     except Exception as e:
-        print(f"[!] {e}")
+        print(f"{e}")
         print("Creating new FAISS DB from documents.")
         db = FAISS.from_documents(chunks, embeddings)
 

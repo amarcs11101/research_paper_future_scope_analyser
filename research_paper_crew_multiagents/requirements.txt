@@ -20,3 +20,4 @@ crewai-tools==0.48.0
 langchain>=0.1.20
 #apache-airflow
 google-generativeai
+streamlit
