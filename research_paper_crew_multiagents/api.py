@@ -109,23 +109,8 @@ async def root():
 async def research_paper_future_scope_analyst(
     research_request: ResearchPaperRequest
 ):      
-    print(f"### Searching in the vector db first ### {research_request.research_on}")
-    vector_result = search_vector_db(research_request.research_on)
-    print(f"### Searching completed in the vector db & data is ### {vector_result}")
-    filtered_results = [(doc, score) for doc, score in vector_result if score <= 0.75]
-
-    if filtered_results: 
-        all_contents = [
-            doc.page_content for doc, _ in filtered_results if hasattr(doc, "page_content")
-        ]
-
-        return ResearchResponse(
-            status="success",
-            message="Future scope based on research generated successfully from cache.",
-            data="\n\n---\n\n".join(all_contents)
-        )
-
-    else:
+        print(f"### Searching in the vector db first ### {research_request.research_on}")
+   
         print("## Calling the agents and tools for getting the research result as vector db doesn't contain the data ###")
         try:
             research_crew = ResearchCrew(research_request.research_on)
@@ -135,7 +120,7 @@ async def research_paper_future_scope_analyst(
                 research_result = str(research_result)
 
             # Save to vector db
-            save(query=research_request.research_on, result=research_result)
+            #save(query=research_request.research_on, result=research_result)
 
             return ResearchResponse(
                     status="success",
