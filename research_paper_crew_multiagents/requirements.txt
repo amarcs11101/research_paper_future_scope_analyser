@@ -1,7 +1,7 @@
-streamlit>=1.29.0
+#streamlit>=1.29.0
 openai>=1.6.1
-unstructured>=0.11.0
-pyowm>=3.3.0
+#unstructured>=0.11.0
+#pyowm>=3.3.0
 
 langchain-community
 langchain-core
@@ -18,4 +18,6 @@ langchain-openai>=0.0.5
 crewai>=0.28.8
 crewai-tools==0.48.0
 langchain>=0.1.20
-apache-airflow
+#apache-airflow
+google-generativeai
+streamlit
